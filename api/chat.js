@@ -1,9 +1,8 @@
 // api/chat.js — Vercel Serverless Function
-// Deploy en Vercel: https://vercel.com/new
-// Configurá la variable ANTHROPIC_API_KEY en Vercel → Settings → Environment Variables
+// Configurá la variable GROQ_API_KEY en Vercel → Settings → Environment Variables
+// Clave gratuita en: https://console.groq.com
 
 export default async function handler(req, res) {
-  // CORS — restringir al dominio de tu tienda vía env var ALLOWED_ORIGIN
   const allowedOrigin = process.env.ALLOWED_ORIGIN || "*";
   res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -12,8 +11,8 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido" });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY no configurada en las variables de entorno");
+  if (!process.env.GROQ_API_KEY) {
+    console.error("GROQ_API_KEY no configurada en las variables de entorno");
     return res.status(500).json({ error: "El servidor no está configurado correctamente" });
   }
 
@@ -23,7 +22,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Se requiere el campo messages" });
   }
 
-  // Usar system prompt personalizado si viene en el body, si no construir desde storeConfig
   const config = storeConfig || {};
   const systemPrompt = customSystemPrompt || `Sos ${config.botName || "Sofia"}, asistente de soporte posventa de ${config.storeName || "la tienda"}.
 
@@ -45,38 +43,35 @@ Reglas importantes:
 - Tono: ${config.tone || "amigable y casual"}`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "llama-3.3-70b-versatile",
         max_tokens: 400,
-        system: systemPrompt,
-        messages: messages.slice(-10), // Últimos 10 mensajes para no exceder el contexto
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.slice(-10),
+        ],
       }),
     });
 
     if (!response.ok) {
-      const err = await response.json();
-      console.error("Anthropic API error:", err);
-      return res.status(502).json({ error: "Error al contactar la API de Claude", detail: err });
+      const err = await response.json().catch(() => ({}));
+      console.error("Groq API error:", err);
+      return res.status(502).json({ error: "Error al contactar la IA", detail: err });
     }
 
     const data = await response.json();
-    const reply = data.content?.[0]?.text || "No pude procesar tu consulta.";
+    const reply = data.choices?.[0]?.message?.content || "No pude procesar tu consulta.";
 
-    // Detectar si el bot quiere derivar al agente humano
     const needsHuman = reply.startsWith("DERIVAR_AGENTE");
     const cleanReply = reply.replace("DERIVAR_AGENTE", "").trim();
 
-    return res.status(200).json({
-      reply: cleanReply,
-      needsHuman,
-    });
+    return res.status(200).json({ reply: cleanReply, needsHuman });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
