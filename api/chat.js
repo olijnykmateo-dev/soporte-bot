@@ -17,15 +17,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "El servidor no está configurado correctamente" });
   }
 
-  const { messages, storeConfig } = req.body;
+  const { messages, storeConfig, systemPrompt: customSystemPrompt } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: "Se requiere el campo messages" });
   }
 
-  // Construir el system prompt con la config de la tienda
+  // Usar system prompt personalizado si viene en el body, si no construir desde storeConfig
   const config = storeConfig || {};
-  const systemPrompt = `Sos ${config.botName || "Sofia"}, asistente de soporte posventa de ${config.storeName || "la tienda"}.
+  const systemPrompt = customSystemPrompt || `Sos ${config.botName || "Sofia"}, asistente de soporte posventa de ${config.storeName || "la tienda"}.
 
 Tu trabajo es ayudar a los clientes con:
 - Estado y seguimiento de pedidos
