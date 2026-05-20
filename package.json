@@ -1,0 +1,17 @@
+{
+  "name": "soporte-bot-ecommerce",
+  "version": "1.0.0",
+  "description": "Chatbot de soporte posventa para Tiendanube / MercadoShops usando Claude AI",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
