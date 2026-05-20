@@ -63,7 +63,7 @@ Reglas importantes:
     if (!response.ok) {
       const err = await response.json();
       console.error("Anthropic API error:", err);
-      return res.status(502).json({ error: "Error al contactar la API de Claude" });
+      return res.status(502).json({ error: "Error al contactar la API de Claude", detail: err });
     }
 
     const data = await response.json();
